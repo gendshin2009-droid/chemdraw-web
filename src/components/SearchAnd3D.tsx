@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import '../styles/SearchAnd3D.css'
 
-interface SearchResult {
+export interface SearchResult {
   id: string
   name: string
   smiles: string

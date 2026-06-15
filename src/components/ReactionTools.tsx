@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import '../styles/ReactionTools.css'
 
-interface ReactionCondition {
+export interface ReactionCondition {
   id: string
   type: 'temperature' | 'catalyst' | 'solvent' | 'time' | 'pressure'
   value: string

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Editor } from 'ketcher-react'
 import 'ketcher-react/dist/index.css'
 import { MolecularProperties } from './components/MolecularProperties'
@@ -7,7 +7,7 @@ import { SearchAnd3D, type SearchResult } from './components/SearchAnd3D'
 import { Collaboration, type Participant, type Comment } from './components/Collaboration'
 import './App.css'
 
-interface MolecularProperties {
+interface MolecularPropertiesData {
   formula?: string
   weight?: number
   smiles?: string
@@ -17,7 +17,7 @@ interface MolecularProperties {
 
 function App() {
   const editorRef = useRef<any>(null)
-  const [properties, setProperties] = useState<MolecularProperties>({})
+  const [properties, setProperties] = useState<MolecularPropertiesData>({})
   const [exportFormat, setExportFormat] = useState<'mol' | 'smiles' | 'inchi' | 'png' | 'svg'>('mol')
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'properties' | 'reactions' | 'search' | 'collab'>('properties')
@@ -138,7 +138,7 @@ function App() {
   }
 
   // Phase 4: Handle search
-  const handleSearch = async (query: string, type: 'substructure' | 'similarity') => {
+  const handleSearch = async (_query: string, _type: 'substructure' | 'similarity') => {
     setSearchLoading(true)
     try {
       // Simulate search results
@@ -221,14 +221,12 @@ function App() {
         <div className="editor-section">
           <div className="editor-wrapper">
             <Editor
-              ref={editorRef}
               onInit={() => {
                 console.log('Ketcher editor initialized')
               }}
-              onChange={() => {
-                updateProperties()
-              }}
               staticResourcesUrl="https://unpkg.com/ketcher-react@3.15.0/dist/static"
+              structServiceProvider={{} as any}
+              errorHandler={() => {}}
             />
           </div>
         </div>

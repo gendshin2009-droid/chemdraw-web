@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import '../styles/Collaboration.css'
 
-interface Participant {
+export interface Participant {
   id: string
   name: string
   color: string
@@ -9,7 +9,7 @@ interface Participant {
   isActive: boolean
 }
 
-interface Comment {
+export interface Comment {
   id: string
   author: string
   text: string
@@ -42,7 +42,7 @@ export function Collaboration({
   const [isJoined, setIsJoined] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [showHistory, setShowHistory] = useState(false)
-  const [versionHistory, setVersionHistory] = useState<
+  const [versionHistory] = useState<
     Array<{ id: string; timestamp: Date; author: string; changes: string }>
   >([])
 
