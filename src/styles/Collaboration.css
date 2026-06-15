@@ -1,0 +1,400 @@
+.collaboration {
+  background: #f9f9f9;
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.collaboration h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #333;
+}
+
+.collaboration h4 {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 10px 0;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.session-info {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.join-session {
+  background: #f0f4ff;
+  border: 1px solid #667eea;
+  border-radius: 4px;
+  padding: 12px;
+}
+
+.join-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.join-controls input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+.join-controls button {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.join-controls button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.session-hint {
+  margin: 0;
+  font-size: 11px;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.session-active {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.status {
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status.connected {
+  color: #22c55e;
+}
+
+.status.disconnected {
+  color: #ef4444;
+}
+
+.leave-btn {
+  padding: 6px 12px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.leave-btn:hover {
+  background: #d32f2f;
+  transform: translateY(-1px);
+}
+
+.participants {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 12px;
+}
+
+.participants h4 {
+  margin-bottom: 8px;
+}
+
+.participants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.participant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.participant-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.participant-info {
+  flex: 1;
+}
+
+.participant-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.participant-status {
+  font-size: 11px;
+  color: #999;
+}
+
+.participant-status.active {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.comments-section {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 12px;
+}
+
+.comments-section h4 {
+  margin-bottom: 8px;
+}
+
+.comment-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.comment-input textarea {
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.comment-input button {
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.comment-input button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.comment-input button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.comment {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+
+.comment-author {
+  font-weight: 600;
+  color: #333;
+}
+
+.comment-time {
+  color: #999;
+  font-size: 10px;
+}
+
+.delete-comment {
+  background: none;
+  border: none;
+  color: #ef4444;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.delete-comment:hover {
+  color: #d32f2f;
+}
+
+.comment-text {
+  font-size: 12px;
+  color: #333;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.comment-atom {
+  font-size: 10px;
+  color: #667eea;
+  font-weight: 600;
+}
+
+.no-comments {
+  text-align: center;
+  color: #999;
+  padding: 12px;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.history-section {
+  border-top: 1px solid #e0e0e0;
+  padding-top: 12px;
+}
+
+.history-toggle {
+  width: 100%;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #555;
+}
+
+.history-toggle:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.history-toggle.active {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.version-history {
+  margin-top: 8px;
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  border-left: 3px solid #667eea;
+  padding: 8px;
+  background: #f9f9f9;
+  border-radius: 2px;
+  font-size: 11px;
+}
+
+.history-time {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.history-author {
+  color: #667eea;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.history-changes {
+  color: #666;
+  font-style: italic;
+}
+
+.no-history {
+  text-align: center;
+  color: #999;
+  padding: 12px;
+  font-style: italic;
+  font-size: 11px;
+}
+
+.collab-info {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 12px;
+  font-size: 11px;
+}
+
+.collab-info h4 {
+  margin-bottom: 8px;
+}
+
+.collab-info ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+  color: #666;
+}
+
+.collab-info li {
+  margin-bottom: 6px;
+}
+
+.collab-info strong {
+  color: #333;
+}

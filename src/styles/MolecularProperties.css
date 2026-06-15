@@ -1,0 +1,94 @@
+.molecular-properties {
+  background: #f9f9f9;
+  border-radius: 6px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.molecular-properties h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #333;
+}
+
+.properties-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.property-item {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 12px;
+}
+
+.property-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.property-item label {
+  display: block;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+
+.property-item .value {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  font-family: 'Courier New', monospace;
+}
+
+.property-item .value.pass {
+  color: #22c55e;
+}
+
+.property-item .value.fail {
+  color: #ef4444;
+}
+
+.violations {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.violation {
+  color: #ef4444;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.loading {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+  font-style: italic;
+}
+
+.error {
+  background: #ffebee;
+  color: #d32f2f;
+  border: 1px solid #ef5350;
+  border-radius: 4px;
+  padding: 10px;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.placeholder {
+  text-align: center;
+  color: #999;
+  padding: 20px;
+  font-style: italic;
+  font-size: 12px;
+}
