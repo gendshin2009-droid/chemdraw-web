@@ -13,23 +13,23 @@ interface MolecularPropertiesData {
   error?: string
 }
 
-// Simple SVG-based structure editor as fallback
+// Canvas-based structure editor with touch support
 const SimpleStructureEditor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [lastX, setLastX] = useState(0)
   const [lastY, setLastY] = useState(0)
 
-  useEffect(() => {
+  const redrawGrid = () => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Set canvas size
-    canvas.width = canvas.offsetWidth
-    canvas.height = canvas.offsetHeight
+    // Clear canvas
+    ctx.fillStyle = 'white'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     // Draw grid
     ctx.strokeStyle = '#f0f0f0'
@@ -51,21 +51,78 @@ const SimpleStructureEditor = () => {
     ctx.fillStyle = '#999'
     ctx.font = '14px sans-serif'
     ctx.fillText('Draw chemical structures here', 20, 40)
-    ctx.fillText('Left-click to draw bonds, Right-click to add atoms', 20, 65)
-  }, [])
+    ctx.fillText('Tap or click to draw bonds', 20, 65)
+  }
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
+    // Set canvas size with device pixel ratio for sharp rendering
+    const dpr = window.devicePixelRatio || 1
     const rect = canvas.getBoundingClientRect()
-    setLastX(e.clientX - rect.left)
-    setLastY(e.clientY - rect.top)
+    canvas.width = rect.width * dpr
+    canvas.height = rect.height * dpr
+
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.scale(dpr, dpr)
+    }
+
+    redrawGrid()
+
+    // Handle window resize
+    const handleResize = () => {
+      const newRect = canvas.getBoundingClientRect()
+      canvas.width = newRect.width * dpr
+      canvas.height = newRect.height * dpr
+      if (ctx) {
+        ctx.scale(dpr, dpr)
+      }
+      redrawGrid()
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Get coordinates from mouse or touch event
+  const getCoordinates = (e: MouseEvent | TouchEvent) => {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+
+    const rect = canvas.getBoundingClientRect()
+    let clientX: number
+    let clientY: number
+
+    if (e instanceof TouchEvent) {
+      if (e.touches.length === 0) return null
+      clientX = e.touches[0].clientX
+      clientY = e.touches[0].clientY
+    } else {
+      clientX = e.clientX
+      clientY = e.clientY
+    }
+
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    }
+  }
+
+  const handleDrawStart = (e: MouseEvent | TouchEvent) => {
+    e.preventDefault()
+    const coords = getCoordinates(e)
+    if (!coords) return
+
+    setLastX(coords.x)
+    setLastY(coords.y)
     setIsDrawing(true)
   }
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleDrawMove = (e: MouseEvent | TouchEvent) => {
     if (!isDrawing) return
+    e.preventDefault()
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -73,56 +130,30 @@ const SimpleStructureEditor = () => {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const rect = canvas.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const coords = getCoordinates(e)
+    if (!coords) return
 
     // Draw line
     ctx.strokeStyle = '#333'
     ctx.lineWidth = 2
     ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
     ctx.beginPath()
     ctx.moveTo(lastX, lastY)
-    ctx.lineTo(x, y)
+    ctx.lineTo(coords.x, coords.y)
     ctx.stroke()
 
-    setLastX(x)
-    setLastY(y)
+    setLastX(coords.x)
+    setLastY(coords.y)
   }
 
-  const handleMouseUp = () => {
+  const handleDrawEnd = (e: MouseEvent | TouchEvent) => {
+    e.preventDefault()
     setIsDrawing(false)
   }
 
   const handleClear = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-    // Redraw grid
-    ctx.strokeStyle = '#f0f0f0'
-    ctx.lineWidth = 0.5
-    for (let i = 0; i < canvas.width; i += 20) {
-      ctx.beginPath()
-      ctx.moveTo(i, 0)
-      ctx.lineTo(i, canvas.width)
-      ctx.stroke()
-    }
-    for (let i = 0; i < canvas.height; i += 20) {
-      ctx.beginPath()
-      ctx.moveTo(0, i)
-      ctx.lineTo(canvas.width, i)
-      ctx.stroke()
-    }
-
-    ctx.fillStyle = '#999'
-    ctx.font = '14px sans-serif'
-    ctx.fillText('Draw chemical structures here', 20, 40)
-    ctx.fillText('Left-click to draw bonds, Right-click to add atoms', 20, 65)
+    redrawGrid()
   }
 
   return (
@@ -130,10 +161,14 @@ const SimpleStructureEditor = () => {
       <canvas
         ref={canvasRef}
         className="structure-canvas"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onMouseDown={(e) => handleDrawStart(e.nativeEvent)}
+        onMouseMove={(e) => handleDrawMove(e.nativeEvent)}
+        onMouseUp={(e) => handleDrawEnd(e.nativeEvent)}
+        onMouseLeave={(e) => handleDrawEnd(e.nativeEvent)}
+        onTouchStart={(e) => handleDrawStart(e.nativeEvent)}
+        onTouchMove={(e) => handleDrawMove(e.nativeEvent)}
+        onTouchEnd={(e) => handleDrawEnd(e.nativeEvent)}
+        onTouchCancel={(e) => handleDrawEnd(e.nativeEvent)}
       />
       <button onClick={handleClear} className="clear-canvas-btn">
         Clear Canvas
