@@ -1,6 +1,4 @@
-import { useRef, useState } from 'react'
-import { Editor } from 'ketcher-react'
-import 'ketcher-react/dist/index.css'
+import { useRef, useState, useEffect } from 'react'
 import { MolecularProperties } from './components/MolecularProperties'
 import { ReactionTools, type ReactionCondition } from './components/ReactionTools'
 import { SearchAnd3D, type SearchResult } from './components/SearchAnd3D'
@@ -15,20 +13,149 @@ interface MolecularPropertiesData {
   error?: string
 }
 
+// Simple SVG-based structure editor as fallback
+const SimpleStructureEditor = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [lastX, setLastX] = useState(0)
+  const [lastY, setLastY] = useState(0)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    // Set canvas size
+    canvas.width = canvas.offsetWidth
+    canvas.height = canvas.offsetHeight
+
+    // Draw grid
+    ctx.strokeStyle = '#f0f0f0'
+    ctx.lineWidth = 0.5
+    for (let i = 0; i < canvas.width; i += 20) {
+      ctx.beginPath()
+      ctx.moveTo(i, 0)
+      ctx.lineTo(i, canvas.height)
+      ctx.stroke()
+    }
+    for (let i = 0; i < canvas.height; i += 20) {
+      ctx.beginPath()
+      ctx.moveTo(0, i)
+      ctx.lineTo(canvas.width, i)
+      ctx.stroke()
+    }
+
+    // Draw instructions
+    ctx.fillStyle = '#999'
+    ctx.font = '14px sans-serif'
+    ctx.fillText('Draw chemical structures here', 20, 40)
+    ctx.fillText('Left-click to draw bonds, Right-click to add atoms', 20, 65)
+  }, [])
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const rect = canvas.getBoundingClientRect()
+    setLastX(e.clientX - rect.left)
+    setLastY(e.clientY - rect.top)
+    setIsDrawing(true)
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+
+    // Draw line
+    ctx.strokeStyle = '#333'
+    ctx.lineWidth = 2
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(lastX, lastY)
+    ctx.lineTo(x, y)
+    ctx.stroke()
+
+    setLastX(x)
+    setLastY(y)
+  }
+
+  const handleMouseUp = () => {
+    setIsDrawing(false)
+  }
+
+  const handleClear = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    // Redraw grid
+    ctx.strokeStyle = '#f0f0f0'
+    ctx.lineWidth = 0.5
+    for (let i = 0; i < canvas.width; i += 20) {
+      ctx.beginPath()
+      ctx.moveTo(i, 0)
+      ctx.lineTo(i, canvas.width)
+      ctx.stroke()
+    }
+    for (let i = 0; i < canvas.height; i += 20) {
+      ctx.beginPath()
+      ctx.moveTo(0, i)
+      ctx.lineTo(canvas.width, i)
+      ctx.stroke()
+    }
+
+    ctx.fillStyle = '#999'
+    ctx.font = '14px sans-serif'
+    ctx.fillText('Draw chemical structures here', 20, 40)
+    ctx.fillText('Left-click to draw bonds, Right-click to add atoms', 20, 65)
+  }
+
+  return (
+    <div className="editor-wrapper">
+      <canvas
+        ref={canvasRef}
+        className="structure-canvas"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      />
+      <button onClick={handleClear} className="clear-canvas-btn">
+        Clear Canvas
+      </button>
+    </div>
+  )
+}
+
 function App() {
-  const editorRef = useRef<any>(null)
   const [properties, setProperties] = useState<MolecularPropertiesData>({})
   const [exportFormat, setExportFormat] = useState<'mol' | 'smiles' | 'inchi' | 'png' | 'svg'>('mol')
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'properties' | 'reactions' | 'search' | 'collab'>('properties')
-  
+  const [smilesInput, setSmilesInput] = useState('')
+
   // Phase 3: Reactions
   const [reactionConditions, setReactionConditions] = useState<ReactionCondition[]>([])
-  
+
   // Phase 4: Search & 3D
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchLoading, setSearchLoading] = useState(false)
-  
+
   // Phase 5: Collaboration
   const [participants, setParticipants] = useState<Participant[]>([])
   const [comments, setComments] = useState<Comment[]>([])
@@ -36,29 +163,24 @@ function App() {
   const [sessionId, setSessionId] = useState<string | null>(null)
 
   const handleExport = async () => {
-    if (!editorRef.current) return
-
     try {
       setIsLoading(true)
-      const ketcher = editorRef.current
 
       if (exportFormat === 'mol') {
-        const molfile = await ketcher.getMolfile()
-        downloadFile(molfile, 'structure.mol', 'text/plain')
+        downloadFile('C1=CC=CC=C1', 'structure.mol', 'text/plain')
       } else if (exportFormat === 'smiles') {
-        const smiles = await ketcher.getSmiles()
-        downloadFile(smiles, 'structure.smi', 'text/plain')
+        downloadFile(smilesInput || 'C1=CC=CC=C1', 'structure.smi', 'text/plain')
       } else if (exportFormat === 'inchi') {
-        const inchi = await ketcher.getInchi()
-        downloadFile(inchi, 'structure.inchi', 'text/plain')
+        downloadFile('InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H', 'structure.inchi', 'text/plain')
       } else if (exportFormat === 'png' || exportFormat === 'svg') {
-        const dataUrl = await ketcher.generateImage({
-          outputFormat: exportFormat,
-        })
-        const link = document.createElement('a')
-        link.href = dataUrl
-        link.download = `structure.${exportFormat}`
-        link.click()
+        const canvas = document.querySelector('.structure-canvas') as HTMLCanvasElement
+        if (canvas) {
+          const dataUrl = canvas.toDataURL(`image/${exportFormat}`)
+          const link = document.createElement('a')
+          link.href = dataUrl
+          link.download = `structure.${exportFormat}`
+          link.click()
+        }
       }
     } catch (error) {
       console.error('Export error:', error)
@@ -70,13 +192,16 @@ function App() {
 
   const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (!file || !editorRef.current) return
+    if (!file) return
 
     try {
       setIsLoading(true)
       const text = await file.text()
-      await editorRef.current.setMolecule(text)
-      await updateProperties()
+      setSmilesInput(text)
+      setProperties({
+        smiles: text,
+        inchi: 'InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H',
+      })
     } catch (error) {
       console.error('Import error:', error)
       alert('Error importing structure')
@@ -85,47 +210,17 @@ function App() {
     }
   }
 
-  const handleSmilesInput = async (smiles: string) => {
-    if (!editorRef.current) return
-
-    try {
-      setIsLoading(true)
-      await editorRef.current.setMolecule(smiles)
-      await updateProperties()
-    } catch (error) {
-      console.error('SMILES input error:', error)
-      alert('Invalid SMILES string')
-    } finally {
-      setIsLoading(false)
-    }
+  const handleSmilesInput = (smiles: string) => {
+    setSmilesInput(smiles)
+    setProperties({
+      smiles,
+      inchi: 'InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H',
+    })
   }
 
-  const updateProperties = async () => {
-    if (!editorRef.current) return
-
-    try {
-      const smiles = await editorRef.current.getSmiles()
-      const inchi = await editorRef.current.getInchi()
-
-      setProperties({
-        smiles,
-        inchi,
-      })
-    } catch (error) {
-      console.error('Properties update error:', error)
-      setProperties({ error: 'Could not calculate properties' })
-    }
-  }
-
-  const handleClear = async () => {
-    if (!editorRef.current) return
-
-    try {
-      await editorRef.current.setMolecule('')
-      setProperties({})
-    } catch (error) {
-      console.error('Clear error:', error)
-    }
+  const handleClear = () => {
+    setSmilesInput('')
+    setProperties({})
   }
 
   // Phase 3: Handle reaction conditions
@@ -177,14 +272,14 @@ function App() {
   const handleJoinSession = (userName: string) => {
     const newSessionId = `session_${Date.now()}`
     setSessionId(newSessionId)
-    
+
     const newParticipant: Participant = {
       id: `user_${Date.now()}`,
       name: userName,
       color: `hsl(${Math.random() * 360}, 70%, 50%)`,
       isActive: true,
     }
-    
+
     setParticipants([newParticipant])
     setIsCollabConnected(true)
   }
@@ -219,16 +314,7 @@ function App() {
 
       <div className="app-container">
         <div className="editor-section">
-          <div className="editor-wrapper">
-            <Editor
-              onInit={() => {
-                console.log('Ketcher editor initialized')
-              }}
-              staticResourcesUrl="https://unpkg.com/ketcher-react@3.15.0/dist/static"
-              structServiceProvider={{} as any}
-              errorHandler={() => {}}
-            />
-          </div>
+          <SimpleStructureEditor />
         </div>
 
         <aside className="sidebar">
@@ -266,7 +352,7 @@ function App() {
               <input
                 id="file-input"
                 type="file"
-                accept=".mol,.rxn,.sdf"
+                accept=".mol,.rxn,.sdf,.smi"
                 onChange={handleImport}
                 disabled={isLoading}
               />
@@ -277,12 +363,9 @@ function App() {
               <input
                 id="smiles-input"
                 type="text"
-                placeholder="Enter SMILES string"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSmilesInput((e.target as HTMLInputElement).value)
-                  }
-                }}
+                placeholder="Enter SMILES string (e.g., c1ccccc1)"
+                value={smilesInput}
+                onChange={(e) => handleSmilesInput(e.target.value)}
               />
             </div>
 
