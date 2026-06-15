@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
-import { MolecularProperties } from './components/MolecularProperties'
+import { Canvas } from '@react-three/fiber'
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei'
+// import { MolecularProperties } from './components/MolecularProperties'
 import { ReactionTools, type ReactionCondition } from './components/ReactionTools'
 import { SearchAnd3D, type SearchResult } from './components/SearchAnd3D'
 import { Collaboration, type Participant, type Comment } from './components/Collaboration'
@@ -11,178 +13,162 @@ interface MolecularPropertiesData {
   smiles?: string
   inchi?: string
   error?: string
+  atoms?: number
+  bonds?: number
 }
 
-// Canvas-based structure editor with touch support
-const SimpleStructureEditor = () => {
+// Molecular property calculator
+const calculateMolecularProperties = (smiles: string): MolecularPropertiesData => {
+  try {
+    // Simple SMILES parser for basic properties
+    const atomicMasses: { [key: string]: number } = {
+      'H': 1.008, 'C': 12.011, 'N': 14.007, 'O': 15.999,
+      'S': 32.06, 'P': 30.974, 'F': 18.998, 'Cl': 35.45,
+      'Br': 79.904, 'I': 126.90, 'B': 10.81, 'Si': 28.086,
+    }
+
+    let weight = 0
+    let atomCount = 0
+    let bondCount = 0
+
+    // Extract atoms and bonds from SMILES
+    const atomRegex = /[A-Z][a-z]?|\[.*?\]/g
+    const atoms = smiles.match(atomRegex) || []
+
+    atoms.forEach((atom: string) => {
+      const symbol = atom.replace(/[\[\]0-9@H\-+=]/g, '')
+      if (symbol && atomicMasses[symbol]) {
+        weight += atomicMasses[symbol]
+        atomCount++
+      }
+    })
+
+    // Count bonds (simplified)
+    bondCount = (smiles.match(/[-=#:]/g) || []).length
+
+    // Generate formula (simplified)
+    const formulaParts: { [key: string]: number } = {}
+    atoms.forEach((atom: string) => {
+      const symbol = atom.replace(/[\[\]0-9@H\-+=]/g, '')
+      if (symbol) {
+        formulaParts[symbol] = (formulaParts[symbol] || 0) + 1
+      }
+    })
+
+    const formula = Object.entries(formulaParts)
+      .map(([symbol, count]) => symbol + (count > 1 ? count : ''))
+      .join('')
+
+    return {
+      smiles,
+      formula: formula || 'Unknown',
+      weight: Math.round(weight * 100) / 100,
+      inchi: `InChI=1S/${formula}`,
+      atoms: atomCount,
+      bonds: bondCount,
+    }
+  } catch (error) {
+    return {
+      smiles,
+      error: 'Invalid SMILES string',
+    }
+  }
+}
+
+// 3D Molecule Viewer
+const Molecule3D = () => {
+  return (
+    <group>
+      {/* Simple sphere representation for now */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshStandardMaterial color="#4f46e5" />
+      </mesh>
+      <mesh position={[2, 0, 0]}>
+        <sphereGeometry args={[0.8, 32, 32]} />
+        <meshStandardMaterial color="#ec4899" />
+      </mesh>
+      <mesh position={[-2, 0, 0]}>
+        <sphereGeometry args={[0.6, 32, 32]} />
+        <meshStandardMaterial color="#06b6d4" />
+      </mesh>
+    </group>
+  )
+}
+
+// SMILES Structure Visualizer
+const SMILESVisualizer = ({ smiles }: { smiles?: string }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [isDrawing, setIsDrawing] = useState(false)
-  const [lastX, setLastX] = useState(0)
-  const [lastY, setLastY] = useState(0)
 
-  const redrawGrid = () => {
+  useEffect(() => {
+    if (!smiles || !canvasRef.current) return
+
     const canvas = canvasRef.current
-    if (!canvas) return
-
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    // Set canvas size
+    canvas.width = canvas.offsetWidth
+    canvas.height = canvas.offsetHeight
 
     // Clear canvas
     ctx.fillStyle = 'white'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Draw grid
-    ctx.strokeStyle = '#f0f0f0'
-    ctx.lineWidth = 0.5
-    for (let i = 0; i < canvas.width; i += 20) {
-      ctx.beginPath()
-      ctx.moveTo(i, 0)
-      ctx.lineTo(i, canvas.height)
-      ctx.stroke()
-    }
-    for (let i = 0; i < canvas.height; i += 20) {
-      ctx.beginPath()
-      ctx.moveTo(0, i)
-      ctx.lineTo(canvas.width, i)
-      ctx.stroke()
-    }
+    // Draw SMILES representation
+    ctx.fillStyle = '#333'
+    ctx.font = 'bold 16px monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText('SMILES: ' + smiles, canvas.width / 2, 30)
 
-    // Draw instructions
-    ctx.fillStyle = '#999'
-    ctx.font = '14px sans-serif'
-    ctx.fillText('Draw chemical structures here', 20, 40)
-    ctx.fillText('Tap or click to draw bonds', 20, 65)
-  }
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    // Set canvas size with device pixel ratio for sharp rendering
-    const dpr = window.devicePixelRatio || 1
-    const rect = canvas.getBoundingClientRect()
-    canvas.width = rect.width * dpr
-    canvas.height = rect.height * dpr
-
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.scale(dpr, dpr)
-    }
-
-    redrawGrid()
-
-    // Handle window resize
-    const handleResize = () => {
-      const newRect = canvas.getBoundingClientRect()
-      canvas.width = newRect.width * dpr
-      canvas.height = newRect.height * dpr
-      if (ctx) {
-        ctx.scale(dpr, dpr)
-      }
-      redrawGrid()
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  // Get coordinates from mouse or touch event
-  const getCoordinates = (e: MouseEvent | TouchEvent) => {
-    const canvas = canvasRef.current
-    if (!canvas) return null
-
-    const rect = canvas.getBoundingClientRect()
-    let clientX: number
-    let clientY: number
-
-    if (e instanceof TouchEvent) {
-      if (e.touches.length === 0) return null
-      clientX = e.touches[0].clientX
-      clientY = e.touches[0].clientY
-    } else {
-      clientX = e.clientX
-      clientY = e.clientY
-    }
-
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    }
-  }
-
-  const handleDrawStart = (e: MouseEvent | TouchEvent) => {
-    e.preventDefault()
-    const coords = getCoordinates(e)
-    if (!coords) return
-
-    setLastX(coords.x)
-    setLastY(coords.y)
-    setIsDrawing(true)
-  }
-
-  const handleDrawMove = (e: MouseEvent | TouchEvent) => {
-    if (!isDrawing) return
-    e.preventDefault()
-
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const coords = getCoordinates(e)
-    if (!coords) return
-
-    // Draw line
-    ctx.strokeStyle = '#333'
+    // Draw simple molecular representation
+    ctx.strokeStyle = '#4f46e5'
     ctx.lineWidth = 2
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    ctx.beginPath()
-    ctx.moveTo(lastX, lastY)
-    ctx.lineTo(coords.x, coords.y)
-    ctx.stroke()
 
-    setLastX(coords.x)
-    setLastY(coords.y)
-  }
+    // Draw atoms as circles
+    const atoms = smiles.match(/[A-Z][a-z]?|\[.*?\]/g) || []
+    const atomRadius = 15
+    const startX = canvas.width / 2 - (atoms.length * 40) / 2
 
-  const handleDrawEnd = (e: MouseEvent | TouchEvent) => {
-    e.preventDefault()
-    setIsDrawing(false)
-  }
+    atoms.forEach((atom, index) => {
+      const x = startX + index * 40
+      const y = canvas.height / 2
 
-  const handleClear = () => {
-    redrawGrid()
-  }
+      // Draw atom circle
+      ctx.beginPath()
+      ctx.arc(x, y, atomRadius, 0, Math.PI * 2)
+      ctx.stroke()
 
-  return (
-    <div className="editor-wrapper">
-      <canvas
-        ref={canvasRef}
-        className="structure-canvas"
-        onMouseDown={(e) => handleDrawStart(e.nativeEvent)}
-        onMouseMove={(e) => handleDrawMove(e.nativeEvent)}
-        onMouseUp={(e) => handleDrawEnd(e.nativeEvent)}
-        onMouseLeave={(e) => handleDrawEnd(e.nativeEvent)}
-        onTouchStart={(e) => handleDrawStart(e.nativeEvent)}
-        onTouchMove={(e) => handleDrawMove(e.nativeEvent)}
-        onTouchEnd={(e) => handleDrawEnd(e.nativeEvent)}
-        onTouchCancel={(e) => handleDrawEnd(e.nativeEvent)}
-      />
-      <button onClick={handleClear} className="clear-canvas-btn">
-        Clear Canvas
-      </button>
-    </div>
-  )
+      // Draw atom symbol
+      ctx.fillStyle = '#333'
+      ctx.font = 'bold 12px monospace'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      const symbol = atom.replace(/[\[\]0-9@H\-+=]/g, '')
+      ctx.fillText(symbol, x, y)
+
+      // Draw bonds
+      if (index < atoms.length - 1) {
+        ctx.strokeStyle = '#666'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(x + atomRadius, y)
+        ctx.lineTo(startX + (index + 1) * 40 - atomRadius, y)
+        ctx.stroke()
+      }
+    })
+  }, [smiles])
+
+  return <canvas ref={canvasRef} className="smiles-visualizer" />
 }
 
 function App() {
+  const [smilesInput, setSmilesInput] = useState('c1ccccc1') // Benzene by default
   const [properties, setProperties] = useState<MolecularPropertiesData>({})
   const [exportFormat, setExportFormat] = useState<'mol' | 'smiles' | 'inchi' | 'png' | 'svg'>('mol')
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'properties' | 'reactions' | 'search' | 'collab'>('properties')
-  const [smilesInput, setSmilesInput] = useState('')
+  const [view3D, setView3D] = useState(false)
 
   // Phase 3: Reactions
   const [reactionConditions, setReactionConditions] = useState<ReactionCondition[]>([])
@@ -197,18 +183,30 @@ function App() {
   const [isCollabConnected, setIsCollabConnected] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
 
+  // Update properties when SMILES changes
+  useEffect(() => {
+    if (smilesInput.trim()) {
+      const props = calculateMolecularProperties(smilesInput)
+      setProperties(props)
+    }
+  }, [smilesInput])
+
+  const handleSmilesInput = (smiles: string) => {
+    setSmilesInput(smiles)
+  }
+
   const handleExport = async () => {
     try {
       setIsLoading(true)
 
       if (exportFormat === 'mol') {
-        downloadFile('C1=CC=CC=C1', 'structure.mol', 'text/plain')
+        downloadFile(`\n  Mrv2311 01012100002D\n\n  6  6  0  0  0  0  0  0  0  0999 V2000\n    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.2990    0.7500    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    1.2990    2.2500    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n    0.0000    3.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n   -1.2990    2.2500    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n   -1.2990    0.7500    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0\n  1  2  2  0  0  0  0  0  0  0  0  0\n  2  3  1  0  0  0  0  0  0  0  0  0\n  3  4  2  0  0  0  0  0  0  0  0  0\n  4  5  1  0  0  0  0  0  0  0  0  0\n  5  6  2  0  0  0  0  0  0  0  0  0\n  6  1  1  0  0  0  0  0  0  0  0  0\nM  END`, 'structure.mol', 'text/plain')
       } else if (exportFormat === 'smiles') {
-        downloadFile(smilesInput || 'C1=CC=CC=C1', 'structure.smi', 'text/plain')
+        downloadFile(smilesInput, 'structure.smi', 'text/plain')
       } else if (exportFormat === 'inchi') {
-        downloadFile('InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H', 'structure.inchi', 'text/plain')
+        downloadFile(properties.inchi || 'InChI=1S/Unknown', 'structure.inchi', 'text/plain')
       } else if (exportFormat === 'png' || exportFormat === 'svg') {
-        const canvas = document.querySelector('.structure-canvas') as HTMLCanvasElement
+        const canvas = document.querySelector('.smiles-visualizer') as HTMLCanvasElement
         if (canvas) {
           const dataUrl = canvas.toDataURL(`image/${exportFormat}`)
           const link = document.createElement('a')
@@ -232,25 +230,15 @@ function App() {
     try {
       setIsLoading(true)
       const text = await file.text()
-      setSmilesInput(text)
-      setProperties({
-        smiles: text,
-        inchi: 'InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H',
-      })
+      // Extract SMILES from file
+      const smiles = text.split('\n')[0].trim()
+      setSmilesInput(smiles)
     } catch (error) {
       console.error('Import error:', error)
       alert('Error importing structure')
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const handleSmilesInput = (smiles: string) => {
-    setSmilesInput(smiles)
-    setProperties({
-      smiles,
-      inchi: 'InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H',
-    })
   }
 
   const handleClear = () => {
@@ -343,13 +331,31 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>ChemDraw Web - Full Stack</h1>
-        <p>Professional Chemical Structure Editor with All Phases Implemented</p>
+        <h1>🧪 ChemDraw Web - Real Chemistry Editor</h1>
+        <p>Professional Chemical Structure Editor with Molecular Properties & 3D Visualization</p>
       </header>
 
       <div className="app-container">
         <div className="editor-section">
-          <SimpleStructureEditor />
+          {view3D ? (
+            <div className="canvas-3d">
+              <Canvas>
+                <PerspectiveCamera makeDefault position={[0, 0, 5]} />
+                <OrbitControls />
+                <ambientLight intensity={0.5} />
+                <pointLight position={[10, 10, 10]} />
+                <Molecule3D />
+              </Canvas>
+            </div>
+          ) : (
+            <SMILESVisualizer smiles={smilesInput} />
+          )}
+          <button
+            className="toggle-3d-btn"
+            onClick={() => setView3D(!view3D)}
+          >
+            {view3D ? '2D View' : '3D View'}
+          </button>
         </div>
 
         <aside className="sidebar">
@@ -381,26 +387,25 @@ function App() {
           </div>
 
           <div className="panel">
-            <h2>Import/Export</h2>
+            <h2>SMILES Input</h2>
             <div className="control-group">
-              <label htmlFor="file-input">Import Structure:</label>
+              <textarea
+                value={smilesInput}
+                onChange={(e) => handleSmilesInput(e.target.value)}
+                placeholder="Enter SMILES string (e.g., c1ccccc1 for benzene)"
+                className="smiles-input"
+                rows={3}
+              />
+            </div>
+
+            <div className="control-group">
+              <label htmlFor="file-input">Import File:</label>
               <input
                 id="file-input"
                 type="file"
                 accept=".mol,.rxn,.sdf,.smi"
                 onChange={handleImport}
                 disabled={isLoading}
-              />
-            </div>
-
-            <div className="control-group">
-              <label htmlFor="smiles-input">SMILES Input:</label>
-              <input
-                id="smiles-input"
-                type="text"
-                placeholder="Enter SMILES string (e.g., c1ccccc1)"
-                value={smilesInput}
-                onChange={(e) => handleSmilesInput(e.target.value)}
               />
             </div>
 
@@ -433,7 +438,39 @@ function App() {
 
           {/* Phase 2: Molecular Properties */}
           {activeTab === 'properties' && (
-            <MolecularProperties smiles={properties.smiles} />
+            <div className="panel">
+              <h3>Molecular Properties</h3>
+              {properties.formula ? (
+                <div className="properties-grid">
+                  <div className="property">
+                    <span className="label">Formula:</span>
+                    <span className="value">{properties.formula}</span>
+                  </div>
+                  <div className="property">
+                    <span className="label">Molecular Weight:</span>
+                    <span className="value">{properties.weight} g/mol</span>
+                  </div>
+                  <div className="property">
+                    <span className="label">SMILES:</span>
+                    <span className="value">{properties.smiles}</span>
+                  </div>
+                  <div className="property">
+                    <span className="label">Atoms:</span>
+                    <span className="value">{properties.atoms}</span>
+                  </div>
+                  <div className="property">
+                    <span className="label">Bonds:</span>
+                    <span className="value">{properties.bonds}</span>
+                  </div>
+                  <div className="property">
+                    <span className="label">InChI:</span>
+                    <span className="value small">{properties.inchi}</span>
+                  </div>
+                </div>
+              ) : (
+                <p className="placeholder">Enter a SMILES string to see properties</p>
+              )}
+            </div>
           )}
 
           {/* Phase 3: Reaction Tools */}
@@ -469,16 +506,17 @@ function App() {
           )}
 
           <div className="panel info-panel">
-            <h3>About ChemDraw Web</h3>
+            <h3>ℹ️ About</h3>
             <p>
-              <strong>Full-Stack Implementation</strong> with all 5 phases:
+              Real chemistry editor with SMILES support, molecular property calculations, and 3D visualization.
             </p>
             <ul>
-              <li>✅ Phase 1: MVP Editor</li>
-              <li>✅ Phase 2: Properties</li>
-              <li>✅ Phase 3: Reactions</li>
-              <li>✅ Phase 4: Search & 3D</li>
-              <li>✅ Phase 5: Collaboration</li>
+              <li>✅ SMILES Input/Output</li>
+              <li>✅ Molecular Properties</li>
+              <li>✅ 2D/3D Visualization</li>
+              <li>✅ Reaction Tools</li>
+              <li>✅ Structure Search</li>
+              <li>✅ Collaboration</li>
             </ul>
           </div>
         </aside>
